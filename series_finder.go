@@ -3,9 +3,7 @@ package nu
 import (
 	"fmt"
 	"golang.org/x/net/html"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -45,46 +43,16 @@ type SeriesFinderSearchRequest struct {
 }
 
 type SeriesFinderResult struct {
+	Title string
 }
 
-func (s *Client) SeriesFinder(r SeriesFinderSearchRequest) (seriesResults []SeriesFinderResult, err error) {
+func (s *Client) SeriesFinder(req SeriesFinderSearchRequest) (results []SeriesFinderResult, err error) {
 
-	v := url.Values{}
-	SetPresent(v, "sf", "1")
-	SetPresent(v, "nt", Join(r.NovelType, ","))
-	SetPresent(v, "org", Join(r.Language, ","))
-	SetPresent(v, "mrl", r.ChaptersRange.EncodeWithDefault(RangeMin), r.Chapters > 0)
-	SetPresent(v, "rl", r.Chapters, r.Chapters > 0)
-	SetPresent(v, "mrf", r.FrequencyRange.EncodeWithDefault(RangeMax), r.Frequency > 0)
-	SetPresent(v, "rf", r.Frequency, r.Frequency > 0)
-	SetPresent(v, "mrvc", r.ReviewsRange.EncodeWithDefault(RangeMin), r.Reviews != 0 || r.ReviewsRange != RangeMin)
-	SetPresent(v, "rvc", r.Reviews, r.Reviews != 0 || r.ReviewsRange != RangeMin)
-	SetPresent(v, "mrt", r.RatingRange.EncodeWithDefault(RangeMin), r.Rating != 0 || r.RatingRange != RangeMin)
-	SetPresent(v, "rt", r.Rating.EncodeWithDefault(Star0), r.Rating != 0 || r.RatingRange != RangeMin)
-	SetPresent(v, "mrct", r.ReadersRange.EncodeWithDefault(RangeMin), r.Readers != 0 || r.ReadersRange != RangeMin)
-	SetPresent(v, "rct", r.Readers, r.Readers != 0 || r.ReadersRange != RangeMin)
-	SetPresent(v, "mdtf", r.FirstReleaseDateRange.EncodeWithDefault(RangeMin), !r.FirstReleaseDate.IsZero() || r.FirstReleaseDateRange != RangeMin)
-	SetPresent(v, "dtf", r.FirstReleaseDate.Format("01/02/2006"), !r.FirstReleaseDate.IsZero() || r.FirstReleaseDateRange != RangeMin)
-	SetPresent(v, "mdtf", r.LastReleaseDateRange.EncodeWithDefault(RangeMin), !r.LastReleaseDate.IsZero() || r.LastReleaseDateRange != RangeMin)
-	SetPresent(v, "dtf", r.LastReleaseDate.Format("01/02/2006"), !r.LastReleaseDate.IsZero() || r.LastReleaseDateRange != RangeMin)
-	SetPresent(v, "mgi", r.GenreOperator.EncodeWithDefault(OpAND), len(r.GenreInclude) > 0)
-	SetPresent(v, "gi", Join(r.GenreInclude, ","))
-	SetPresent(v, "ge", Join(r.GenreExclude, ","))
-	SetPresent(v, "mtgi", r.TagOperator.EncodeWithDefault(OpOR), len(r.TagInclude) > 0)
-	SetPresent(v, "tgi", Join(r.TagInclude, ","))
-	SetPresent(v, "tge", Join(r.TagExclude, ","))
-	SetPresent(v, "ss", r.Status.Encode(), r.Status != StatusAll)
-	SetPresent(v, "grpi", r.GroupFilter.EncodeWithDefault(FilterInclude), len(r.Groups) > 0)
-	SetPresent(v, "grp", Join(r.Groups, ","))
-	SetPresent(v, "opi", r.OriginalPublisherFilter.EncodeWithDefault(FilterInclude), len(r.OriginalPublishers) > 0)
-	SetPresent(v, "op", Join(r.OriginalPublishers, ","))
-	SetPresent(v, "enpi", r.EnglishPublisherFilter.EncodeWithDefault(FilterInclude), len(r.EnglishPublishers) > 0)
-	SetPresent(v, "enp", Join(r.EnglishPublishers, ","))
-	SetPresent(v, "sh", r.SeriesContains)
-	SetPresent(v, "sort", r.SortBy.EncodeWithDefault(SortLastUpdated))
-	SetPresent(v, "order", r.OrderBy.EncodeWithDefault(OrderDesc))
+	v := encodeSeriesFinderSearchRequest(req)
 
-	response, err := s.client.Get(fmt.Sprintf("https://www.novelupdates.com/series-finder/?%s", v.Encode()))
+	fmt.Println(Encode(v))
+
+	response, err := s.client.Get(fmt.Sprintf("https://www.novelupdates.com/series-finder/?%s", Encode(v)))
 	if err != nil {
 		return nil, fmt.Errorf("series-finder: %w", err)
 	}
@@ -94,16 +62,91 @@ func (s *Client) SeriesFinder(r SeriesFinderSearchRequest) (seriesResults []Seri
 		return nil, fmt.Errorf("series-finder: %w", err)
 	}
 
-	//tagOptionNodes, err := queryAll(doc, "#tags_include option")
-	//if err != nil {
-	//	return nil, fmt.Errorf("tags (#tags_include option): %w", err)
-	//}
-	//
-	//for _, option := range tagOptionNodes {
-	//	seriesResults = append(seriesResults, SeriesFinderResult{})
-	//}
+	searchResultNodes, err := queryAll(doc, ".search_main_box_nu")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder (.search_main_box_nu): %w", err)
+	}
 
-	return seriesResults, nil
+	for _, searchResultNode := range searchResultNodes {
+
+		titleNode, err := query(searchResultNode, ".search_title a")
+		if err != nil {
+			return nil, fmt.Errorf("series-finder (.search_title): %w", err)
+		}
+
+		results = append(results, SeriesFinderResult{
+			Title: titleNode.FirstChild.Data,
+		})
+	}
+
+	return results, nil
+}
+
+func encodeSeriesFinderSearchRequest(req SeriesFinderSearchRequest) Values {
+
+	v := Values{}
+	Set(v, "sf", "1")
+	Add(v, "nt", req.NovelType...)
+	Add(v, "nt", req.Language...)
+	//Set(v, "mrl", req.ChaptersRange.EncodeWithDefault(RangeMin), req.Chapters > 0)
+	//Set(v, "rl", req.Chapters, req.Chapters > 0)
+	Set(v, "mrl", req.ChaptersRange.EncodeWithDefault(RangeMin))
+	Set(v, "rl", strconv.Itoa(req.Chapters))
+	//Set(v, "mrf", req.FrequencyRange.EncodeWithDefault(RangeMax), req.Frequency > 0)
+	//Set(v, "rf", req.Frequency, req.Frequency > 0)
+	Set(v, "mrf", req.FrequencyRange.EncodeWithDefault(RangeMax))
+	Set(v, "rf", strconv.FormatFloat(float64(req.Frequency), 'f', -1, 32))
+	//Set(v, "mrvc", req.ReviewsRange.EncodeWithDefault(RangeMin), req.Reviews != 0 || req.ReviewsRange != RangeMin)
+	//Set(v, "rvc", req.Reviews, req.Reviews != 0 || req.ReviewsRange != RangeMin)
+	Set(v, "mrvc", req.ReviewsRange.EncodeWithDefault(RangeMin))
+	Set(v, "rvc", strconv.Itoa(req.Reviews))
+	//Set(v, "mrt", req.RatingRange.EncodeWithDefault(RangeMin), req.Rating != 0 || req.RatingRange != RangeMin)
+	//Set(v, "rt", req.Rating.EncodeWithDefault(Star0), req.Rating != 0 || req.RatingRange != RangeMin)
+	Set(v, "mrt", req.RatingRange.EncodeWithDefault(RangeMin))
+	Set(v, "rt", req.Rating.EncodeWithDefault(Star0))
+	//Set(v, "mrct", req.ReadersRange.EncodeWithDefault(RangeMin), req.Readers != 0 || req.ReadersRange != RangeMin)
+	//Set(v, "rct", req.Readers, req.Readers != 0 || req.ReadersRange != RangeMin)
+	Set(v, "mrct", req.ReadersRange.EncodeWithDefault(RangeMin))
+	Set(v, "rct", strconv.Itoa(req.Readers))
+	//Set(v, "mdtf", req.FirstReleaseDateRange.EncodeWithDefault(RangeMin), !req.FirstReleaseDate.IsZero() || req.FirstReleaseDateRange != RangeMin)
+	//Set(v, "dtf", req.FirstReleaseDate.Format("01/02/2006"), !req.FirstReleaseDate.IsZero() || req.FirstReleaseDateRange != RangeMin)
+	Set(v, "mdtf", req.FirstReleaseDateRange.EncodeWithDefault(RangeMin))
+	Set(v, "dtf", req.FirstReleaseDate.Format("01/02/2006"))
+	//SetPresent(v, "mdtf", req.LastReleaseDateRange.EncodeWithDefault(RangeMin), !req.LastReleaseDate.IsZero() || req.LastReleaseDateRange != RangeMin)
+	//SetPresent(v, "dtf", req.LastReleaseDate.Format("01/02/2006"), !req.LastReleaseDate.IsZero() || req.LastReleaseDateRange != RangeMin)
+	Set(v, "mdtf", req.LastReleaseDateRange.EncodeWithDefault(RangeMin))
+	Set(v, "dtf", req.LastReleaseDate.Format("01/02/2006"))
+	//SetPresent(v, "mgi", req.GenreOperator.EncodeWithDefault(OpAND), len(req.GenreInclude) > 0)
+	//SetPresent(v, "gi", Join(req.GenreInclude, ","))
+	//SetPresent(v, "ge", Join(req.GenreExclude, ","))
+	Set(v, "mgi", req.GenreOperator.EncodeWithDefault(OpAND))
+	Add(v, "gi", req.GenreInclude...)
+	Add(v, "ge", req.GenreExclude...)
+	//Set(v, "mtgi", req.TagOperator.EncodeWithDefault(OpOR), len(req.TagInclude) > 0)
+	//Add(v, "tgi", Join(req.TagInclude, ","))
+	//Add(v, "tge", Join(req.TagExclude, ","))
+	Set(v, "mtgi", req.TagOperator.EncodeWithDefault(OpOR))
+	Add(v, "tgi", req.TagInclude...)
+	Add(v, "tge", req.TagExclude...)
+	//Set(v, "ss", req.Status.EncodeWithDefault(StatusAll), req.Status != StatusAll)
+	Set(v, "ss", req.Status.EncodeWithDefault(StatusAll))
+	//Set(v, "grpi", req.GroupFilter.EncodeWithDefault(FilterInclude), len(req.Groups) > 0)
+	//Add(v, "grp", Join(req.Groups, ","))
+	Set(v, "grpi", req.GroupFilter.EncodeWithDefault(FilterInclude))
+	Add(v, "grp", req.Groups...)
+	//Set(v, "opi", req.OriginalPublisherFilter.EncodeWithDefault(FilterInclude), len(req.OriginalPublishers) > 0)
+	//Add(v, "op", Join(req.OriginalPublishers, ","))
+	Set(v, "opi", req.OriginalPublisherFilter.EncodeWithDefault(FilterInclude))
+	Add(v, "op", req.OriginalPublishers...)
+	//Set(v, "enpi", req.EnglishPublisherFilter.EncodeWithDefault(FilterInclude), len(req.EnglishPublishers) > 0)
+	//Add(v, "enp", Join(req.EnglishPublishers, ","))
+	Set(v, "enpi", req.EnglishPublisherFilter.EncodeWithDefault(FilterInclude))
+	Add(v, "enp", req.EnglishPublishers...)
+	Set(v, "sh", req.SeriesContains)
+	Set(v, "sort", req.SortBy.EncodeWithDefault(SortLastUpdated))
+	Set(v, "order", req.OrderBy.EncodeWithDefault(OrderDesc))
+
+	return v
 }
 
 type Range int
@@ -193,8 +236,15 @@ func (s Status) Encode() string {
 	if s >= 0 && s <= 3 {
 		return strconv.Itoa(int(s) + 1)
 	}
-	// all on remote server
-	return "1"
+	return ""
+}
+
+func (s Status) EncodeWithDefault(def Status) string {
+	v := s.Encode()
+	if v == "" {
+		return def.Encode()
+	}
+	return v
 }
 
 type Filter string
@@ -284,48 +334,4 @@ func (s Order) EncodeWithDefault(def Order) string {
 		return def.Encode()
 	}
 	return v
-}
-
-func SetPresent(target url.Values, key string, value interface{}, condition ...bool) {
-	dcondition := true
-	if len(condition) > 0 {
-		dcondition = condition[0]
-	}
-	if dcondition == false {
-		return
-	}
-	switch svalue := value.(type) {
-	case string:
-		if len(svalue) != 0 {
-			target.Set(key, svalue)
-		}
-	case int:
-		target.Set(key, strconv.Itoa(svalue))
-	case float32:
-		target.Set(key, fmt.Sprintf("%.1f", svalue))
-	default:
-		panic("This type is not supported")
-	}
-}
-
-func Join[T ~string](elems []T, sep string) string {
-	switch len(elems) {
-	case 0:
-		return ""
-	case 1:
-		return string(elems[0])
-	}
-	n := len(sep) * (len(elems) - 1)
-	for i := 0; i < len(elems); i++ {
-		n += len(elems[i])
-	}
-
-	var b strings.Builder
-	b.Grow(n)
-	b.WriteString(string(elems[0]))
-	for _, s := range elems[1:] {
-		b.WriteString(sep)
-		b.WriteString(string(s))
-	}
-	return b.String()
 }

@@ -11,7 +11,7 @@ type NovelTypeResult struct {
 	Value string
 }
 
-func (s *Client) NovelTypes() (novelTypes []NovelTypeResult, err error) {
+func (s *Client) NovelTypes() (results []NovelTypeResult, err error) {
 
 	resp, err := s.client.Get("https://www.novelupdates.com/series-finder/")
 	if err != nil {
@@ -29,12 +29,12 @@ func (s *Client) NovelTypes() (novelTypes []NovelTypeResult, err error) {
 	}
 
 	for _, option := range aNovelTypeNodes {
-		novelTypes = append(novelTypes, NovelTypeResult{
+		results = append(results, NovelTypeResult{
 			Slug:  normalisedSlug(option.LastChild.Data),
-			Name:  option.LastChild.Data,
+			Name:  englishTitleCaser.String(option.LastChild.Data),
 			Value: attr(option, "genreid"),
 		})
 	}
 
-	return novelTypes, nil
+	return results, nil
 }

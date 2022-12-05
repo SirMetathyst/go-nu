@@ -1,21 +1,41 @@
 package nu_test
 
 import (
-	"fmt"
 	"github.com/SirMetathyst/go-nu"
+	"github.com/carlmjohnson/be"
+
 	"testing"
 )
 
-func TestGenres(t *testing.T) {
+func TestClient_Genres(t *testing.T) {
+
 	client := nu.DefaultClient
 	genres, err := client.Genres()
 
-	fmt.Printf("List of genres:\n\n")
-	for i, genre := range genres {
-		fmt.Printf("Genre #%d: Slug: \"%s\", Name: \"%s\", Value: \"%s\"\n", i, genre.Slug, genre.Name, genre.Value)
-	}
+	be.NilErr(t, err)
 
-	if err != nil {
-		panic(err)
-	}
+	t.Run("data scraped successfully", func(t *testing.T) {
+		for _, genre := range genres {
+			Lowercase(t, genre.Slug)
+			NotContainsAny(t, genre.Slug, "/' \t\n\r")
+			Title(t, genre.Name)
+			NotContainsAny(t, genre.Name, "\t\n\r")
+			Number(t, genre.Value)
+		}
+	})
+
+	t.Run("generated genres are valid", func(t *testing.T) {
+		be.Equal(t, len(genres), len(nu.SlugToGenre))
+		for _, genre := range genres {
+
+			generatedGenre, _ := nu.ValueToGenre[genre.Value]
+			be.Equal(t, generatedGenre, nu.Genre(genre.Value))
+
+			generatedSlug, _ := nu.GenreToSlug[generatedGenre]
+			be.Equal(t, generatedSlug, genre.Slug)
+
+			generatedTitle, _ := nu.GenreToTitle[generatedGenre]
+			be.Equal(t, generatedTitle, genre.Name)
+		}
+	})
 }

@@ -3,7 +3,11 @@ package nu
 import (
 	"fmt"
 	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
+
+var englishTitleCaser = cases.Title(language.English)
 
 type GenreResult struct {
 	Slug  string
@@ -11,7 +15,7 @@ type GenreResult struct {
 	Value string
 }
 
-func (s *Client) Genres() (genres []GenreResult, err error) {
+func (s *Client) Genres() (results []GenreResult, err error) {
 
 	resp, err := s.client.Get("https://www.novelupdates.com/series-finder/")
 	if err != nil {
@@ -29,12 +33,12 @@ func (s *Client) Genres() (genres []GenreResult, err error) {
 	}
 
 	for _, option := range aGenreNodes {
-		genres = append(genres, GenreResult{
+		results = append(results, GenreResult{
 			Slug:  normalisedSlug(option.LastChild.Data),
-			Name:  option.LastChild.Data,
+			Name:  englishTitleCaser.String(option.LastChild.Data),
 			Value: attr(option, "genreid"),
 		})
 	}
 
-	return genres, nil
+	return results, nil
 }

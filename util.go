@@ -52,7 +52,7 @@ func normalisedSlug(n string) string {
 
 	n = strings.ToLower(n)
 	n = strings.Replace(n, " ", "-", -1)
-	n = strings.Replace(n, "//", "-", -1)
+	n = strings.Replace(n, "/", "-slash-", -1)
 	n = strings.Replace(n, "'", "", -1)
 
 	return n

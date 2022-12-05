@@ -3,6 +3,8 @@ package nu
 import (
 	"fmt"
 	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type TagResult struct {
@@ -11,7 +13,7 @@ type TagResult struct {
 	Value string
 }
 
-func (s *Client) Tags() (tags []TagResult, err error) {
+func (s *Client) Tags() (results []TagResult, err error) {
 
 	response, err := s.client.Get("https://www.novelupdates.com/series-finder/")
 	if err != nil {
@@ -29,12 +31,12 @@ func (s *Client) Tags() (tags []TagResult, err error) {
 	}
 
 	for _, option := range tagOptionNodes {
-		tags = append(tags, TagResult{
+		results = append(results, TagResult{
 			Slug:  normalisedSlug(option.FirstChild.Data),
-			Name:  option.FirstChild.Data,
+			Name:  cases.Title(language.English).String(option.FirstChild.Data),
 			Value: attr(option, "value"),
 		})
 	}
 
-	return tags, nil
+	return results, nil
 }

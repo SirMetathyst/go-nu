@@ -128,6 +128,17 @@ func WriteNovelTypes(results []nu.NovelTypeResult, b *bytes.Buffer) {
 	}
 	b.WriteString(")\n\n")
 
+	/////////// ValueTo
+	b.WriteString("var (\n")
+	b.WriteString(fmt.Sprintf("\tValueTo%s = map[string]%s{\n", s, s))
+
+	for _, result := range results {
+		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Value, s, normalisedName(result.Name)))
+	}
+
+	b.WriteString("}\n")
+	b.WriteString(")\n\n")
+
 	//////// ToDisplayString
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\t%sToTitle = map[%s]string{\n", s, s))
@@ -185,6 +196,17 @@ func WriteLanguages(results []nu.LanguageResult, b *bytes.Buffer) {
 	for _, result := range results {
 		b.WriteString(fmt.Sprintf("\t%s%s %s = \"%s\"\n", s, normalisedName(result.Name), s, result.Value))
 	}
+	b.WriteString(")\n\n")
+
+	/////////// ValueTo
+	b.WriteString("var (\n")
+	b.WriteString(fmt.Sprintf("\tValueTo%s = map[string]%s{\n", s, s))
+
+	for _, result := range results {
+		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Value, s, normalisedName(result.Name)))
+	}
+
+	b.WriteString("}\n")
 	b.WriteString(")\n\n")
 
 	//////// ToDisplayString
@@ -246,6 +268,17 @@ func WriteGenres(results []nu.GenreResult, b *bytes.Buffer) {
 	}
 	b.WriteString(")\n\n")
 
+	/////////// ValueTo
+	b.WriteString("var (\n")
+	b.WriteString(fmt.Sprintf("\tValueTo%s = map[string]%s{\n", s, s))
+
+	for _, result := range results {
+		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Value, s, normalisedName(result.Name)))
+	}
+
+	b.WriteString("}\n")
+	b.WriteString(")\n\n")
+
 	//////// ToDisplayString
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\t%sToTitle = map[%s]string{\n", s, s))
@@ -303,6 +336,17 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	for _, result := range results {
 		b.WriteString(fmt.Sprintf("\t%s%s %s = \"%s\"\n", s, normalisedName(result.Name), s, result.Value))
 	}
+	b.WriteString(")\n\n")
+
+	/////////// ValueTo
+	b.WriteString("var (\n")
+	b.WriteString(fmt.Sprintf("\tValueTo%s = map[string]%s{\n", s, s))
+
+	for _, result := range results {
+		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Value, s, normalisedName(result.Name)))
+	}
+
+	b.WriteString("}\n")
 	b.WriteString(")\n\n")
 
 	//////// ToDisplayString

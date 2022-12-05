@@ -11,6 +11,14 @@ const (
 )
 
 var (
+	ValueToNovelType = map[string]NovelType{
+		"2443":  NovelTypeLightNovel,
+		"26874": NovelTypePublishedNovel,
+		"2444":  NovelTypeWebNovel,
+	}
+)
+
+var (
 	NovelTypeToTitle = map[NovelType]string{
 		NovelTypeLightNovel:     "Light Novel",
 		NovelTypePublishedNovel: "Published Novel",

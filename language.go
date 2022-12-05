@@ -11,7 +11,7 @@ type LanguageResult struct {
 	Value string
 }
 
-func (s *Client) Languages() (languages []LanguageResult, err error) {
+func (s *Client) Languages() (results []LanguageResult, err error) {
 
 	resp, err := s.client.Get("https://www.novelupdates.com/series-finder/")
 	if err != nil {
@@ -29,12 +29,12 @@ func (s *Client) Languages() (languages []LanguageResult, err error) {
 	}
 
 	for _, option := range aLanguageNodes {
-		languages = append(languages, LanguageResult{
+		results = append(results, LanguageResult{
 			Slug:  normalisedSlug(option.LastChild.Data),
-			Name:  option.LastChild.Data,
+			Name:  englishTitleCaser.String(option.LastChild.Data),
 			Value: attr(option, "genreid"),
 		})
 	}
 
-	return languages, nil
+	return results, nil
 }

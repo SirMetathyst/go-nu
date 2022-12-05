@@ -1,21 +1,40 @@
 package nu_test
 
 import (
-	"fmt"
 	"github.com/SirMetathyst/go-nu"
+	"github.com/carlmjohnson/be"
 	"testing"
 )
 
-func TestNovelTypes(t *testing.T) {
+func TestClient_NovelTypes(t *testing.T) {
+
 	client := nu.DefaultClient
-	tags, err := client.NovelTypes()
+	novelTypes, err := client.NovelTypes()
 
-	fmt.Printf("List of novel types:\n\n")
-	for i, tag := range tags {
-		fmt.Printf("Novel Type #%d: Slug: \"%s\", Name: \"%s\", Value: \"%s\"\n", i, tag.Slug, tag.Name, tag.Value)
-	}
+	be.NilErr(t, err)
 
-	if err != nil {
-		panic(err)
-	}
+	t.Run("data scraped successfully", func(t *testing.T) {
+		for _, novelType := range novelTypes {
+			Lowercase(t, novelType.Slug)
+			NotContainsAny(t, novelType.Slug, "/' \t\n\r")
+			Title(t, novelType.Name)
+			NotContainsAny(t, novelType.Name, "\t\n\r")
+			Number(t, novelType.Value)
+		}
+	})
+
+	t.Run("generated novel types are valid", func(t *testing.T) {
+		be.Equal(t, len(novelTypes), len(nu.SlugToNovelType))
+		for _, novelType := range novelTypes {
+
+			generatedNovelType, _ := nu.ValueToNovelType[novelType.Value]
+			be.Equal(t, generatedNovelType, nu.NovelType(novelType.Value))
+
+			generatedSlug, _ := nu.NovelTypeToSlug[generatedNovelType]
+			be.Equal(t, generatedSlug, novelType.Slug)
+
+			generatedTitle, _ := nu.NovelTypeToTitle[generatedNovelType]
+			be.Equal(t, generatedTitle, novelType.Name)
+		}
+	})
 }

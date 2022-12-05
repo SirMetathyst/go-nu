@@ -17,6 +17,34 @@ const (
 )
 
 var (
+	ValueToLanguage = map[string]Language{
+		"495":   LanguageChinese,
+		"9181":  LanguageFilipino,
+		"9179":  LanguageIndonesian,
+		"496":   LanguageJapanese,
+		"18657": LanguageKhmer,
+		"497":   LanguageKorean,
+		"9183":  LanguageMalaysian,
+		"9954":  LanguageThai,
+		"9177":  LanguageVietnamese,
+	}
+)
+
+var (
+	LanguageToValue = map[Language]string{
+		LanguageChinese:    "495",
+		LanguageFilipino:   "9181",
+		LanguageIndonesian: "9179",
+		LanguageJapanese:   "496",
+		LanguageKhmer:      "18657",
+		LanguageKorean:     "497",
+		LanguageMalaysian:  "9183",
+		LanguageThai:       "9954",
+		LanguageVietnamese: "9177",
+	}
+)
+
+var (
 	LanguageToTitle = map[Language]string{
 		LanguageChinese:    "Chinese",
 		LanguageFilipino:   "Filipino",
