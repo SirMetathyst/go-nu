@@ -45,46 +45,37 @@ func normalisedName(n string) string {
 
 func WriteLanguagesToFile(client *nu.Client) error {
 
-	languages, err := client.Languages()
-	if err != nil {
+	buf := &bytes.Buffer{}
+	WriteHeader(buf, "nu")
+	if err := WriteLanguages(client, buf); err != nil {
 		return err
 	}
 
-	b := &bytes.Buffer{}
-	WriteHeader(b, "nu")
-	WriteLanguages(languages, b)
-
-	_ = os.WriteFile("languages_generated.go", b.Bytes(), 0666)
-	cmd := exec.Command("go", "fmt", "./languages_generated.go")
-	return cmd.Run()
+	return WriteFormattedFile("languages_generated.go", buf.Bytes())
 }
 
 func WriteNovelTypesToFile(client *nu.Client) error {
 
-	novelTypes, err := client.NovelTypes()
-	if err != nil {
+	buf := &bytes.Buffer{}
+	WriteHeader(buf, "nu")
+	if err := WriteNovelTypes(client, buf); err != nil {
 		return err
 	}
 
-	b := &bytes.Buffer{}
-	WriteHeader(b, "nu")
-	WriteNovelTypes(novelTypes, b)
-
-	_ = os.WriteFile("novel_types_generated.go", b.Bytes(), 0666)
-	cmd := exec.Command("go", "fmt", "./novel_types_generated.go")
-	return cmd.Run()
+	return WriteFormattedFile("novel_types_generated.go", buf.Bytes())
 }
 
 func WriteTagsToFile(client *nu.Client) error {
 
-	tags, err := client.Tags()
-	if err != nil {
+	buf := &bytes.Buffer{}
+	WriteHeader(buf, "nu")
+	if err := WriteTags(client, buf); err != nil {
 		return err
 	}
 
 	b := &bytes.Buffer{}
 	WriteHeader(b, "nu")
-	WriteTags(tags, b)
+	WriteTags(client, b)
 
 	_ = os.WriteFile("tags_generated.go", b.Bytes(), 0666)
 	cmd := exec.Command("go", "fmt", "./tags_generated.go")
@@ -93,17 +84,20 @@ func WriteTagsToFile(client *nu.Client) error {
 
 func WriteGenresToFile(client *nu.Client) error {
 
-	genres, err := client.Genres()
-	if err != nil {
+	buf := &bytes.Buffer{}
+	WriteHeader(buf, "nu")
+	if err := WriteGenres(client, buf); err != nil {
 		return err
 	}
 
-	b := &bytes.Buffer{}
-	WriteHeader(b, "nu")
-	WriteGenres(genres, b)
+	return WriteFormattedFile("genres_generated.go", buf.Bytes())
+}
 
-	_ = os.WriteFile("genres_generated.go", b.Bytes(), 0666)
-	cmd := exec.Command("go", "fmt", "./genres_generated.go")
+func WriteFormattedFile(name string, data []byte) error {
+
+	_ = os.WriteFile(name, data, 0666)
+	cmd := exec.Command("go", "fmt", name)
+
 	return cmd.Run()
 }
 
@@ -114,12 +108,16 @@ func WriteHeader(b *bytes.Buffer, packageName string) {
 	b.WriteString(fmt.Sprintf("package %s\n\n", packageName))
 }
 
-func WriteNovelTypes(results []nu.NovelTypeResult, b *bytes.Buffer) {
+func WriteNovelTypes(client *nu.Client, b *bytes.Buffer) error {
 
 	s := "NovelType"
 
+	results, err := client.SeriesFinderNovelTypes()
+	if err != nil {
+		return err
+	}
+
 	//////// Main
-	b.WriteString(fmt.Sprintf("type %s string\n\n", s))
 	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(results)))
 	b.WriteString("const (\n")
 
@@ -182,14 +180,20 @@ func WriteNovelTypes(results []nu.NovelTypeResult, b *bytes.Buffer) {
 
 	b.WriteString("}\n")
 	b.WriteString(")\n")
+
+	return err
 }
 
-func WriteLanguages(results []nu.LanguageResult, b *bytes.Buffer) {
+func WriteLanguages(client *nu.Client, b *bytes.Buffer) error {
 
 	s := "Language"
 
+	results, err := client.SeriesFinderLanguages()
+	if err != nil {
+		return err
+	}
+
 	//////// Main
-	b.WriteString(fmt.Sprintf("type %s string\n\n", s))
 	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(results)))
 	b.WriteString("const (\n")
 
@@ -252,14 +256,20 @@ func WriteLanguages(results []nu.LanguageResult, b *bytes.Buffer) {
 
 	b.WriteString("}\n")
 	b.WriteString(")\n")
+
+	return nil
 }
 
-func WriteGenres(results []nu.GenreResult, b *bytes.Buffer) {
+func WriteGenres(client *nu.Client, b *bytes.Buffer) error {
 
 	s := "Genre"
 
+	results, err := client.SeriesFinderGenres()
+	if err != nil {
+		return err
+	}
+
 	//////// Main
-	b.WriteString(fmt.Sprintf("type %s string\n\n", s))
 	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(results)))
 	b.WriteString("const (\n")
 
@@ -322,18 +332,54 @@ func WriteGenres(results []nu.GenreResult, b *bytes.Buffer) {
 
 	b.WriteString("}\n")
 	b.WriteString(")\n")
+
+	return err
 }
 
-func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
+func normalisedTagDescription(description string, tagName string) string {
+
+	s := strings.ReplaceAll(description, "Tag is", fmt.Sprintf("Tag%s is", tagName))
+	s = strings.ReplaceAll(s, "Tag should", fmt.Sprintf("Tag%s should", tagName))
+	s = strings.ReplaceAll(s, "Tag that", fmt.Sprintf("Tag%s that", tagName))
+	s = strings.ReplaceAll(s, "Tag refers", fmt.Sprintf("Tag%s refers", tagName))
+	s = strings.ReplaceAll(s, "Tag to", fmt.Sprintf("Tag%s to", tagName))
+
+	return s
+}
+
+func WriteTags(client *nu.Client, b *bytes.Buffer) error {
 
 	s := "Tag"
 
+	seriesFinderResults, err := client.SeriesFinderTags()
+	if err != nil {
+		return err
+	}
+
+	type tagDescResult struct {
+		result nu.TagResult
+		url    string
+	}
+
+	tagResultMap := make(map[string]tagDescResult)
+	page := 1
+	for tagResults, err := client.ListTags(page); tagResults != nil || err != nil; tagResults, err = client.ListTags(page) {
+		if err != nil {
+			return err
+		}
+		for _, tagResult := range tagResults {
+			tagResultMap[tagResult.Name] = tagDescResult{result: tagResult, url: fmt.Sprintf("https://www.novelupdates.com/list-tags/?st=1&pg=%d", page)}
+		}
+		page++
+	}
+
 	//////// Main
-	b.WriteString(fmt.Sprintf("type %s string\n\n", s))
-	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(results)))
+	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(seriesFinderResults)))
 	b.WriteString("const (\n")
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
+		b.WriteString(fmt.Sprintf("// %s... \n// Description generated from: %s\n",
+			normalisedTagDescription(tagResultMap[result.Name].result.Description, normalisedName(result.Name)), tagResultMap[result.Name].url))
 		b.WriteString(fmt.Sprintf("\t%s%s %s = \"%s\"\n", s, normalisedName(result.Name), s, result.Value))
 	}
 	b.WriteString(")\n\n")
@@ -342,7 +388,7 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\tValueTo%s = map[string]%s{\n", s, s))
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
 		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Value, s, normalisedName(result.Name)))
 	}
 
@@ -353,7 +399,7 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\t%sToTitle = map[%s]string{\n", s, s))
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
 		b.WriteString(fmt.Sprintf("\t%s%s:\"%s\",\n", s, normalisedName(result.Name), result.Name))
 	}
 
@@ -364,7 +410,7 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\tTitleTo%s = map[string]%s{\n", s, s))
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
 		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Name, s, normalisedName(result.Name)))
 	}
 
@@ -375,7 +421,7 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\tSlugTo%s = map[string]%s{\n", s, s))
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
 		b.WriteString(fmt.Sprintf("\t\"%s\":%s%s,\n", result.Slug, s, normalisedName(result.Name)))
 	}
 
@@ -386,10 +432,12 @@ func WriteTags(results []nu.TagResult, b *bytes.Buffer) {
 	b.WriteString("var (\n")
 	b.WriteString(fmt.Sprintf("\t%sToSlug = map[%s]string{\n", s, s))
 
-	for _, result := range results {
+	for _, result := range seriesFinderResults {
 		b.WriteString(fmt.Sprintf("\t%s%s:\"%s\",\n", s, normalisedName(result.Name), result.Slug))
 	}
 
 	b.WriteString("}\n")
 	b.WriteString(")\n")
+
+	return err
 }

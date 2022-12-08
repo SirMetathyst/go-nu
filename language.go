@@ -2,34 +2,30 @@ package nu
 
 import (
 	"fmt"
-	"golang.org/x/net/html"
 )
 
-type LanguageResult struct {
+type Language string
+
+type SeriesFinderLanguageResult struct {
 	Slug  string
 	Name  string
 	Value string
 }
 
-func (s *Client) Languages() (results []LanguageResult, err error) {
+func (s *Client) SeriesFinderLanguages() (results []SeriesFinderSearchPropertyResult, err error) {
 
-	resp, err := s.client.Get("https://www.novelupdates.com/series-finder/")
+	doc, err := s.request("https://www.novelupdates.com/series-finder/")
 	if err != nil {
-		return nil, fmt.Errorf("languages: %w", err)
-	}
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("languages: %w", err)
+		return nil, fmt.Errorf("series-finder-languages: %w", err)
 	}
 
 	aLanguageNodes, err := queryAll(doc, "a[genreid].langrank")
 	if err != nil {
-		return nil, fmt.Errorf("languages (a[genreid].langrank): %w", err)
+		return nil, fmt.Errorf("series-finder-languages: %w", err)
 	}
 
 	for _, option := range aLanguageNodes {
-		results = append(results, LanguageResult{
+		results = append(results, SeriesFinderSearchPropertyResult{
 			Slug:  normalisedSlug(option.LastChild.Data),
 			Name:  englishTitleCaser.String(option.LastChild.Data),
 			Value: attr(option, "genreid"),

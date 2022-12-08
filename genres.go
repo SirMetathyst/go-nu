@@ -2,38 +2,34 @@ package nu
 
 import (
 	"fmt"
-	"golang.org/x/net/html"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 var englishTitleCaser = cases.Title(language.English)
 
-type GenreResult struct {
+type Genre string
+
+type SeriesFinderGenreResult struct {
 	Slug  string
 	Name  string
 	Value string
 }
 
-func (s *Client) Genres() (results []GenreResult, err error) {
+func (s *Client) SeriesFinderGenres() (results []SeriesFinderSearchPropertyResult, err error) {
 
-	resp, err := s.client.Get("https://www.novelupdates.com/series-finder/")
+	doc, err := s.request("https://www.novelupdates.com/series-finder/")
 	if err != nil {
-		return nil, fmt.Errorf("genres: %w", err)
-	}
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("genres: %w", err)
+		return nil, fmt.Errorf("series-finder-genres: %w", err)
 	}
 
 	aGenreNodes, err := queryAll(doc, "a[genreid].genreme")
 	if err != nil {
-		return nil, fmt.Errorf("genres (a[genreid]): %w", err)
+		return nil, fmt.Errorf("series-finder-genres: %w", err)
 	}
 
 	for _, option := range aGenreNodes {
-		results = append(results, GenreResult{
+		results = append(results, SeriesFinderSearchPropertyResult{
 			Slug:  normalisedSlug(option.LastChild.Data),
 			Name:  englishTitleCaser.String(option.LastChild.Data),
 			Value: attr(option, "genreid"),

@@ -7,9 +7,10 @@ import (
 	"testing"
 )
 
-func TestSeriesFinder(t *testing.T) {
+func TestClient_SeriesFinderSearch(t *testing.T) {
+
 	client := nu.DefaultClient
-	results, err := client.SeriesFinder(nu.SeriesFinderSearchRequest{
+	results, err := client.SeriesFinderSearch(nu.SeriesFinderSearchRequest{
 		NovelType: []nu.NovelType{
 			nu.NovelTypeWebNovel,
 			nu.NovelTypeLightNovel,

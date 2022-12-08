@@ -1,7 +1,6 @@
 package nu
 
 import (
-	"fmt"
 	"github.com/andybalholm/cascadia"
 	"golang.org/x/net/html"
 	"strings"
@@ -14,12 +13,7 @@ func query(n *html.Node, query string) (*html.Node, error) {
 		return &html.Node{}, err
 	}
 
-	node := cascadia.Query(n, sel)
-	if node == nil {
-		return nil, fmt.Errorf("query: selector resulted in nil node")
-	}
-
-	return node, nil
+	return cascadia.Query(n, sel), nil
 }
 
 func queryAll(n *html.Node, query string) ([]*html.Node, error) {
@@ -29,12 +23,7 @@ func queryAll(n *html.Node, query string) ([]*html.Node, error) {
 		return []*html.Node{}, err
 	}
 
-	nodes := cascadia.QueryAll(n, sel)
-	if nodes == nil {
-		return nil, fmt.Errorf("query: selector resulted in nil nodes")
-	}
-
-	return nodes, nil
+	return cascadia.QueryAll(n, sel), nil
 }
 
 func attr(n *html.Node, attrName string) string {
@@ -48,12 +37,15 @@ func attr(n *html.Node, attrName string) string {
 	return ""
 }
 
+var (
+	slugReplacer    = strings.NewReplacer(" ", "-", "/", "-slash-", "'", "")
+	newlineReplacer = strings.NewReplacer("\n", "", "\r", "")
+)
+
 func normalisedSlug(n string) string {
+	return slugReplacer.Replace(strings.ToLower(n))
+}
 
-	n = strings.ToLower(n)
-	n = strings.Replace(n, " ", "-", -1)
-	n = strings.Replace(n, "/", "-slash-", -1)
-	n = strings.Replace(n, "'", "", -1)
-
-	return n
+func normalisedDescription(n string) string {
+	return newlineReplacer.Replace(n)
 }

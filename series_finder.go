@@ -2,7 +2,6 @@ package nu
 
 import (
 	"fmt"
-	"golang.org/x/net/html"
 	"strconv"
 	"time"
 )
@@ -42,36 +41,38 @@ type SeriesFinderSearchRequest struct {
 	OrderBy                 Order
 }
 
-type SeriesFinderResult struct {
+type SeriesFinderSearchPropertyResult struct {
+	Slug  string
+	Name  string
+	Value string
+}
+
+type SeriesFinderSearchResult struct {
 	Title string
 }
 
-func (s *Client) SeriesFinder(req SeriesFinderSearchRequest) (results []SeriesFinderResult, err error) {
+func (s *Client) SeriesFinderSearch(req SeriesFinderSearchRequest) (results []SeriesFinderSearchResult, err error) {
 
-	response, err := s.client.Get(fmt.Sprintf("https://www.novelupdates.com/series-finder/?%s", encodeSeriesFinderSearchRequest(req)))
-	if err != nil {
-		return nil, fmt.Errorf("series-finder: %w", err)
-	}
-
-	doc, err := html.Parse(response.Body)
+	doc, err := s.request(fmt.Sprintf("https://www.novelupdates.com/series-finder/?%s", encodeSeriesFinderSearchRequest(req)))
 	if err != nil {
 		return nil, fmt.Errorf("series-finder: %w", err)
 	}
 
 	searchResultNodes, err := queryAll(doc, ".search_main_box_nu")
 	if err != nil {
-		return nil, fmt.Errorf("series-finder (.search_main_box_nu): %w", err)
+		return []SeriesFinderSearchResult{}, fmt.Errorf("series-finder: %w", err)
 	}
 
 	for _, searchResultNode := range searchResultNodes {
 
-		titleNode, err := query(searchResultNode, ".search_title a")
-		if err != nil {
-			return nil, fmt.Errorf("series-finder (.search_title): %w", err)
+		titleNode, _ := query(searchResultNode, ".search_title a")
+		titleData := ""
+		if titleNode != nil {
+			titleData = titleNode.FirstChild.Data
 		}
 
-		results = append(results, SeriesFinderResult{
-			Title: titleNode.FirstChild.Data,
+		results = append(results, SeriesFinderSearchResult{
+			Title: titleData,
 		})
 	}
 

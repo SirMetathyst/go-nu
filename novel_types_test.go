@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func TestClient_NovelTypes(t *testing.T) {
+func TestClient_SeriesFinderNovelTypes(t *testing.T) {
 
 	client := nu.DefaultClient
-	novelTypes, err := client.NovelTypes()
+	novelTypes, err := client.SeriesFinderNovelTypes()
 
 	be.NilErr(t, err)
 
@@ -20,21 +20,6 @@ func TestClient_NovelTypes(t *testing.T) {
 			Title(t, novelType.Name)
 			NotContainsAny(t, novelType.Name, "\t\n\r")
 			Number(t, novelType.Value)
-		}
-	})
-
-	t.Run("generated novel types are valid", func(t *testing.T) {
-		be.Equal(t, len(novelTypes), len(nu.SlugToNovelType))
-		for _, novelType := range novelTypes {
-
-			generatedNovelType, _ := nu.ValueToNovelType[novelType.Value]
-			be.Equal(t, generatedNovelType, nu.NovelType(novelType.Value))
-
-			generatedSlug, _ := nu.NovelTypeToSlug[generatedNovelType]
-			be.Equal(t, generatedSlug, novelType.Slug)
-
-			generatedTitle, _ := nu.NovelTypeToTitle[generatedNovelType]
-			be.Equal(t, generatedTitle, novelType.Name)
 		}
 	})
 }

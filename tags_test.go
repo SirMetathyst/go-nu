@@ -6,10 +6,10 @@ import (
 	"testing"
 )
 
-func TestClient_Tags(t *testing.T) {
+func TestClient_SeriesFinderTags(t *testing.T) {
 
 	client := nu.DefaultClient
-	tags, err := client.Tags()
+	tags, err := client.SeriesFinderTags()
 
 	be.NilErr(t, err)
 
@@ -22,19 +22,18 @@ func TestClient_Tags(t *testing.T) {
 			Number(t, tag.Value)
 		}
 	})
+}
 
-	t.Run("generated tags are valid", func(t *testing.T) {
-		be.Equal(t, len(tags), len(nu.SlugToTag))
-		for _, tag := range tags {
+func TestClient_ListTags(t *testing.T) {
 
-			generatedTag, _ := nu.ValueToTag[tag.Value]
-			be.Equal(t, generatedTag, nu.Tag(tag.Value))
+	client := nu.DefaultClient
+	tags, err := client.ListTags(1)
 
-			generatedSlug, _ := nu.TagToSlug[generatedTag]
-			be.Equal(t, generatedSlug, tag.Slug)
+	if err != nil {
+		t.Errorf("got: %v", err)
+	}
 
-			generatedTitle, _ := nu.TagToTitle[generatedTag]
-			be.Equal(t, generatedTitle, tag.Name)
-		}
-	})
+	if len(tags) == 0 {
+		t.Fatalf("list tags should return data on first page")
+	}
 }
