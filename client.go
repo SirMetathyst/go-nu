@@ -11,7 +11,7 @@ import (
 var DefaultClient = New()
 
 type Client struct {
-	client *http.Client
+	*http.Client
 }
 
 func New() *Client {
@@ -20,16 +20,16 @@ func New() *Client {
 	client.Transport = round_tripper.NewCloudFlareBypassRoundTripper(client.Transport)
 	client.Transport = round_tripper.NewThrottledRoundTripper(1*time.Second, 2, client.Transport)
 
-	return &Client{client: client}
+	return &Client{Client: client}
 }
 
 func NewWithClient(client *http.Client) *Client {
-	return &Client{client: client}
+	return &Client{Client: client}
 }
 
 func (s *Client) request(url string) (*html.Node, error) {
 
-	response, err := s.client.Get(url)
+	response, err := s.Client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("request: %w", err)
 	}

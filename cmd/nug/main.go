@@ -15,20 +15,21 @@ func main() {
 
 	client := nu.DefaultClient
 
-	if err := WriteNovelTypesToFile(client); err != nil {
-		log.Fatalln()
-	}
+	//if err := WriteNovelTypesToFile(client); err != nil {
+	//	log.Fatalln(err)
+	//}
+	//if err := WriteLanguagesToFile(client); err != nil {
+	//	log.Fatalln(err)
+	//}
+	//if err := WriteTagsToFile(client); err != nil {
+	//	log.Fatalln(err)
+	//}
+	//if err := WriteGenresToFile(client); err != nil {
+	//	log.Fatalln(err)
+	//}
 
-	if err := WriteLanguagesToFile(client); err != nil {
-		log.Fatalln()
-	}
-
-	if err := WriteTagsToFile(client); err != nil {
-		log.Fatalln()
-	}
-
-	if err := WriteGenresToFile(client); err != nil {
-		log.Fatalln()
+	if err := WriteAllToFile(client); err != nil {
+		log.Fatalln(err)
 	}
 }
 
@@ -41,6 +42,26 @@ func normalisedName(n string) string {
 	n = strings.Replace(n, "'", "", -1)
 
 	return n
+}
+
+func WriteAllToFile(client *nu.Client) error {
+
+	buf := &bytes.Buffer{}
+	WriteHeader(buf, "nu")
+	if err := WriteNovelTypes(client, buf); err != nil {
+		return err
+	}
+	if err := WriteLanguages(client, buf); err != nil {
+		return err
+	}
+	if err := WriteGenres(client, buf); err != nil {
+		return err
+	}
+	if err := WriteTags(client, buf); err != nil {
+		return err
+	}
+
+	return WriteFormattedFile("generated.go", buf.Bytes())
 }
 
 func WriteLanguagesToFile(client *nu.Client) error {
@@ -264,6 +285,20 @@ func WriteGenres(client *nu.Client, b *bytes.Buffer) error {
 
 	s := "Genre"
 
+	type genreDescResult struct {
+		result nu.GenreExplanationResult
+		url    string
+	}
+
+	genreResultMap := make(map[string]genreDescResult)
+	genreResults, err := client.GenreExplanation()
+	if err != nil {
+		return err
+	}
+	for _, genreResult := range genreResults {
+		genreResultMap[genreResult.Name] = genreDescResult{result: genreResult, url: "https://www.novelupdates.com/genre-explanation/"}
+	}
+
 	results, err := client.SeriesFinderGenres()
 	if err != nil {
 		return err
@@ -273,9 +308,16 @@ func WriteGenres(client *nu.Client, b *bytes.Buffer) error {
 	b.WriteString(fmt.Sprintf("// %s: Total(%d)\n", s, len(results)))
 	b.WriteString("const (\n")
 
+	//for _, result := range results {
+	//	b.WriteString(fmt.Sprintf("\t%s%s %s = \"%s\"\n", s, normalisedName(result.Name), s, result.Value))
+	//}
+
 	for _, result := range results {
+		b.WriteString(fmt.Sprintf("// %s... \n// Description generated from: %s\n",
+			normalisedTagDescription(genreResultMap[result.Name].result.Description, normalisedName(result.Name)), genreResultMap[result.Name].url))
 		b.WriteString(fmt.Sprintf("\t%s%s %s = \"%s\"\n", s, normalisedName(result.Name), s, result.Value))
 	}
+
 	b.WriteString(")\n\n")
 
 	/////////// ValueTo

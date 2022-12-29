@@ -2,9 +2,143 @@ package nu
 
 import (
 	"fmt"
+	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strconv"
 	"time"
 )
+
+type NovelType string
+
+type SeriesFinderNovelTypeResult struct {
+	Slug  string
+	Name  string
+	Value string
+}
+
+func (s *Client) SeriesFinderNovelTypes() (results []SeriesFinderSearchPropertyResult, err error) {
+
+	doc, err := s.request("https://www.novelupdates.com/series-finder/")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-novel-types: %w", err)
+	}
+
+	aNovelTypeNodes, err := queryAll(doc, "a[genreid].typerank")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-novel-types: %w", err)
+	}
+
+	for _, option := range aNovelTypeNodes {
+		results = append(results, SeriesFinderSearchPropertyResult{
+			Slug:  normalisedSlug(option.LastChild.Data),
+			Name:  englishTitleCaser.String(option.LastChild.Data),
+			Value: attr(option, "genreid"),
+		})
+	}
+
+	return results, nil
+}
+
+type Language string
+
+type SeriesFinderLanguageResult struct {
+	Slug  string
+	Name  string
+	Value string
+}
+
+func (s *Client) SeriesFinderLanguages() (results []SeriesFinderSearchPropertyResult, err error) {
+
+	doc, err := s.request("https://www.novelupdates.com/series-finder/")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-languages: %w", err)
+	}
+
+	aLanguageNodes, err := queryAll(doc, "a[genreid].langrank")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-languages: %w", err)
+	}
+
+	for _, option := range aLanguageNodes {
+		results = append(results, SeriesFinderSearchPropertyResult{
+			Slug:  normalisedSlug(option.LastChild.Data),
+			Name:  englishTitleCaser.String(option.LastChild.Data),
+			Value: attr(option, "genreid"),
+		})
+	}
+
+	return results, nil
+}
+
+var englishTitleCaser = cases.Title(language.English)
+
+type Genre string
+
+type SeriesFinderGenreResult struct {
+	Slug  string
+	Name  string
+	Value string
+}
+
+func (s *Client) SeriesFinderGenres() (results []SeriesFinderSearchPropertyResult, err error) {
+
+	doc, err := s.request("https://www.novelupdates.com/series-finder/")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-genres: %w", err)
+	}
+
+	aGenreNodes, err := queryAll(doc, "a[genreid].genreme")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-genres: %w", err)
+	}
+
+	for _, option := range aGenreNodes {
+		results = append(results, SeriesFinderSearchPropertyResult{
+			Slug:  normalisedSlug(option.LastChild.Data),
+			Name:  englishTitleCaser.String(option.LastChild.Data),
+			Value: attr(option, "genreid"),
+		})
+	}
+
+	return results, nil
+}
+
+type Tag string
+
+type SeriesFinderTagResult struct {
+	Slug  string
+	Name  string
+	Value string
+}
+
+func (s *Client) SeriesFinderTags() (results []SeriesFinderSearchPropertyResult, err error) {
+
+	response, err := s.Client.Get("https://www.novelupdates.com/series-finder/")
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-tags: %w", err)
+	}
+
+	doc, err := html.Parse(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("series-finder-tags: %w", err)
+	}
+
+	tagOptionNodes, err := queryAll(doc, "#tags_include option")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, option := range tagOptionNodes {
+		results = append(results, SeriesFinderSearchPropertyResult{
+			Slug:  normalisedSlug(option.FirstChild.Data),
+			Name:  cases.Title(language.English).String(option.FirstChild.Data),
+			Value: attr(option, "value"),
+		})
+	}
+
+	return results, nil
+}
 
 type SeriesFinderSearchRequest struct {
 	NovelType               []NovelType
